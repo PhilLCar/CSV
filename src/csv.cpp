@@ -10,11 +10,20 @@ CSV::Cell::Cell() : Cell("")
 {
 }
 
+CSV::Cell::Cell(Cell const &cell)
+    : Cell(cell.content)
+{
+}
+
 CSV::Cell::Cell(const char *content)
     : width(20)
 {
-    this->content = new char[strlen(content) + 1]{0};
-    sprintf(this->content, "%s", content);
+    if (content != nullptr) {
+        this->content = new char[strlen(content) + 1]{0};
+        sprintf(this->content, "%s", content);
+    } else {
+        this->content = new char[1]{0};
+    }
 }
 
 CSV::Cell::~Cell()
@@ -22,17 +31,36 @@ CSV::Cell::~Cell()
     delete content;
 }
 
-std::ostream operator << (std::ostream &stream, CSV::Cell &cell) {
+CSV::Cell &CSV::Cell::operator =(Cell const &cell)
+{
+    width = cell.width;
+    delete content;
+    content = new char[strlen(cell.content) + 1]{0};
+    sprintf(content, "%s", cell.content);
+    return *this;
+}
+
+CSV::Cell &CSV::Cell::operator =(Cell &&cell)
+{
+    width = cell.width;
+    delete content;
+    content = cell.content;
+    cell.content = nullptr;
+    return *this;
+}
+
+std::ostream& operator << (std::ostream &stream, CSV::Cell &cell) {
     stream << std::setw(cell.width) << cell.string();
 }
 
 // Column
 //===================================================================================
 CSV::Column::Column(CSV &csv, int index)
-    : header(&csv.columnNames()[index])
+    : header(&csv.header[index])
+    , _size(csv.dim_v)
 {
-    cells = new Cell*[csv.dim_v];
-    for (int i = 0; i < csv.dim_v; i++) {
+    cells = new Cell*[_size];
+    for (int i = 0; i < _size; i++) {
         cells[i] = &csv.content[index][i];
     }
 }
@@ -49,6 +77,24 @@ CSV::Cell& CSV::Column::operator [](int index)
 
 // Row
 //===================================================================================
+CSV::Row::Row(CSV csv, int index)
+    : _size(csv.dim_h)
+{
+    cells = new Cell*[_size];
+    for (int i = 0; i < _size; i++) {
+        cells[i] = &csv.content[index][i];
+    }
+}
+
+CSV::Row::~Row()
+{
+    delete cells;
+}
+
+CSV::Cell& CSV::Row::operator [](int index)
+{
+    return *cells[index];
+}
 
 // CSV
 //===================================================================================
@@ -62,15 +108,36 @@ CSV::CSV(const char *filename, bool firstRowIsHeader)
     , cap_h(0)
     , cap_v(0)
 {
+    FILE *file = fopen(filename, "r");
+    char string[512] = {0};
+    if (file != nullptr) {
+        if (firstRowIsHeader) {
+            char c;
+            do {
+                c = next(file, string);
+                addColumn(string);
+            } while (c != '\n' && c != EOF);
+        }
+        char c = ',';
+        for (int row = 0; c != EOF; row++) {
+            addRow();
+            c = ',';
+            for (int col = 0; c != EOF && c != '\n'; col++) {
+                c = next(file, string);
+                (*this)[col][row] = string;
+            }
+        }
+    }
+    fclose(file);
 }
 
 CSV::~CSV()
 {
     for (int j = 0; j < dim_h; j++) {
-        if (content[j] != nullptr) delete[] content[j];
+        delete[] content[j];
     }
-    if (header  != nullptr) delete[] header;
-    if (content != nullptr) delete[] content;
+    delete[] header;
+    delete[] content;
 }
 
 // Columns
@@ -80,7 +147,7 @@ bool CSV::addColumn()
     return addColumn(nullptr);
 }
 
-bool CSV::addColumn(const char *columnName)
+bool CSV::addColumn(const char *colName)
 {
     bool success = true;
     try {
@@ -90,7 +157,7 @@ bool CSV::addColumn(const char *columnName)
         else            ncap = 2 * cap_h;
         resizeh(ncap);
     }
-    header[dim_h] = Cell(columnName);
+    header[dim_h]  = colName;
     content[dim_h] = new Cell[dim_v];
     dim_h++;
     } catch (...) {
@@ -112,7 +179,7 @@ bool CSV::moveColumn(int from, int to)
                     content[i] = content[i + 1];
                 }
             } else {
-                for (int i = from; i > to; i++) {
+                for (int i = from; i > to; i--) {
                     header[i]  = header[i - 1];
                     content[i] = content[i - 1];
                 }
@@ -125,9 +192,9 @@ bool CSV::moveColumn(int from, int to)
     return success;
 }
 
-bool CSV::moveColumn(const char *columnName, int rel)
+bool CSV::moveColumn(const char *colName, int rel)
 {
-    int from = column(columnName);
+    int from = column(colName);
     return moveColumn(from, from + rel);
 }
 
@@ -158,11 +225,11 @@ bool CSV::insertColumn(int index)
     return insertColumn(index, nullptr);
 }
 
-bool CSV::insertColumn(int index, const char *columnName)
+bool CSV::insertColumn(int index, const char *colName)
 {
     bool success = false;
     if (index >= 0 && index < dim_h) {
-        success |= addColumn(columnName);
+        success |= addColumn(colName);
         success |= moveColumn(dim_h - 1, index);
     }
     return success;
@@ -172,8 +239,8 @@ bool CSV::deleteColumn(int index)
 {
     bool success = true;
     try {
-        moveColumn(index, --dim_h);
-        if (content[dim_h] != nullptr) delete[] content[dim_h];
+        moveColumn(index, dim_h - 1);
+        delete[] content[dim_h--];
         if (dim_h < cap_h / 4) {
             int ncap = cap_h / 2;
             resizeh(ncap);
@@ -184,9 +251,9 @@ bool CSV::deleteColumn(int index)
     return success;
 }
 
-bool CSV::deleteColumn(const char *columnName)
+bool CSV::deleteColumn(const char *colName)
 {
-    deleteColumn(column(columnName));
+    deleteColumn(column(colName));
 }
 
 // Rows
@@ -264,7 +331,8 @@ bool CSV::deleteRow(int index)
 {
     bool success = true;
     try {
-        moveRow(index, --dim_v);
+        moveRow(index, dim_v - 1);
+        dim_v--;
         if (dim_v < cap_v / 4) {
             int ncap = cap_v / 2;
             resizev(ncap);
@@ -277,21 +345,32 @@ bool CSV::deleteRow(int index)
 
 // Operators
 //===================================================================================
+CSV::Column CSV::operator [](const char *colName)
+{
+    return Column(*this, column(colName));
+}
+
 CSV::Column CSV::operator [](int index)
 {
+    if (index < 0) index += dim_h;
     return Column(*this, index);
 }
 
 // Private
 //===================================================================================
-int CSV::column(const char *columnName) 
+int CSV::column(const char *colName) 
 {
     int index = -1;
     for (int i = 0; i < dim_h; i++) {
-        if (!strcmp(columnName, header[i].string())) {
+        if (!strcmp(colName, header[i].string())) {
             index = i;
             break;
         }
+    }
+    if (index == -1) {
+        char error[64] = {0};
+        sprintf(error, "Column '%s' doesn't exist", colName);
+        throw std::out_of_range(error);
     }
     return index;
 }
@@ -305,7 +384,6 @@ void CSV::resizeh(int ncap)
         t_content[i] = content[i];
     }
     for (int i = dim_h; i < ncap;  i++) {
-        t_header[i]  = nullptr;
         t_content[i] = nullptr;
     }
     delete[] header;
@@ -322,11 +400,23 @@ void CSV::resizev(int ncap)
         for (int i = 0;     i < dim_v; i++) {
             t_column[i] = content[j][i];
         }
-        for (int i = dim_v; i < ncap;  i++) {
-            t_column[i] = nullptr;
-        }
         delete[] content[j];
         content[j] = t_column;
     }
     cap_v = ncap;
+}
+
+char CSV::next(FILE *file, char *string) {
+    memset(string, 0, strlen(string));
+    char c;
+    bool quotes = false;
+    for (int i = 0; ; i++) {
+        do {
+            c = getc(file);
+        } while (c == '\r');
+        if (c == '"') quotes = !quotes;
+        if ((c == ',' && !quotes) || c == '\n' || c == EOF) break;
+        string[i] = c;
+    }
+    return c;
 }

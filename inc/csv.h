@@ -2,6 +2,7 @@
 #define INC_CSV_H
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <ostream>
 
 class CSV {
@@ -9,6 +10,7 @@ public:
     class Cell {
     public:
         Cell();
+        Cell(Cell const &cell);
         Cell(const char *content);
         ~Cell();
 
@@ -22,7 +24,9 @@ public:
             return atof(content);
         }
 
-        friend std::ostream operator <<(std::ostream &stream, Cell &cell);
+        Cell &operator =(Cell const &cell);
+        Cell &operator =(Cell &&cell);
+        friend std::ostream& operator <<(std::ostream &stream, Cell &cell);
     private:
         int   width;
         char *content;
@@ -35,7 +39,9 @@ public:
         ~Column();
 
         Cell &operator [](int index);
+        inline int size() { return _size; }
     private:
+        int    _size;
         Cell  *header;
         Cell **cells;
     };
@@ -43,11 +49,13 @@ public:
     class Row {
         friend CSV;
     public:
-        Row(CSV &csv, int index);
+        Row(CSV csv, int index);
         ~Row();
 
         Cell &operator [](int index);
+        inline int size() { return _size; }
     private:
+        int    _size;
         Cell **cells;
     };
 
@@ -56,15 +64,15 @@ public:
     ~CSV();
 
     bool addColumn();
-    bool addColumn(const char *columnName);
+    bool addColumn(const char *colName);
     bool moveColumn(int from, int to);
     bool moveColumn(const char *fromName, int rel);
     bool swapColumn(int col1, int col2);
     bool swapColumn(const char *col1Name, const char *col2Name);
     bool insertColumn(int index);
-    bool insertColumn(int index, const char *columnName);
+    bool insertColumn(int index, const char *colName);
     bool deleteColumn(int index);
-    bool deleteColumn(const char *columnName);
+    bool deleteColumn(const char *colName);
     inline Cell *columnNames() {
         return header;
     }
@@ -81,12 +89,15 @@ public:
         return dim_v;
     }
 
+    Column operator [](const char *colName);
     Column operator [](int index);
 
 private:
-    int column(const char *columnName);
+    int column(const char *colName);
     void resizeh(int ncap);
     void resizev(int ncap);
+
+    char next(FILE *file, char *string);
 
     bool         hasHeader;
     Cell        *header;
