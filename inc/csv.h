@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <ostream>
+#include <set>
 
 class CSV {
 public:
@@ -39,11 +40,24 @@ public:
         ~Column();
 
         Cell &operator [](int index);
-        inline int size() { return _size; }
+        inline int size() { return dim_v; }
     private:
-        int    _size;
+        int    dim_v;
         Cell  *header;
         Cell **cells;
+    };
+
+    class ColumnSet {
+    public:
+        ColumnSet(CSV &csv, std::set<int> &cols);
+        ~ColumnSet();
+
+        inline int size() { return dim_h; }
+        inline int rows() { return dim_v; }
+    private:
+        int              dim_h;
+        int              dim_v;
+        std::set<Column> cols;
     };
 
     class Row {
@@ -53,9 +67,9 @@ public:
         ~Row();
 
         Cell &operator [](int index);
-        inline int size() { return _size; }
+        inline int size() { return dim_h; }
     private:
-        int    _size;
+        int    dim_h;
         Cell **cells;
     };
 
@@ -89,8 +103,13 @@ public:
         return dim_v;
     }
 
-    Column operator [](const char *colName);
-    Column operator [](int index);
+    ColumnSet operator ()();
+    ColumnSet operator ()(const char *col1Name, const char *col2Name);
+    ColumnSet operator ()(int col1, int col2);
+    ColumnSet operator ()(std::set<const char *> &colNames);
+    ColumnSet operator ()(std::set<int> &cols);
+    Column    operator [](const char *colName);
+    Column    operator [](int index);
 
 private:
     int column(const char *colName);
