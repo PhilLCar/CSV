@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <ostream>
 #include <set>
+#include <cstdarg>
 
 class CSV {
 public:
@@ -13,15 +14,17 @@ public:
         Cell();
         Cell(Cell const &cell);
         Cell(const char *content);
+        Cell(int integer);
+        Cell(double decimal);
         ~Cell();
 
-        inline char *string() {
+        const inline char *string() {
             return content;
         }
-        inline int integer() {
+        const inline int integer() {
             return atoi(content);
         }
-        inline double decimal() {
+        const inline double decimal() {
             return atof(content);
         }
 
@@ -39,38 +42,83 @@ public:
         Column(CSV &csv, int index);
         ~Column();
 
-        Cell &operator [](int index);
-        inline int size() { return dim_v; }
+        friend bool operator <(const Column &a, const Column &b);
+        Cell       &operator [](int index) const;
+        Cell       &operator [](int index);
+        inline int   size() { return dim_v; }
+        inline Cell &name() { return *header; }
     private:
         int    dim_v;
         Cell  *header;
         Cell **cells;
     };
 
+    class ColumnSet;
+    class Row {
+        friend CSV;
+    public:
+        Row(CSV &csv, int index);
+        Row(ColumnSet &cs, int index);
+        ~Row();
+
+        void select(int index) const;
+
+        friend bool operator <(const Row &a, const Row &b);
+        Cell &operator [](int index) const;
+        Cell &operator [](int index);
+        inline int size() { return dim_h; }
+    private:
+        mutable int selected;
+        int         dim_h;
+        Cell      **cells;
+    };
+
+    class Selection;
     class ColumnSet {
+        friend Selection;
+        friend Row;
     public:
         ColumnSet(CSV &csv, std::set<int> &cols);
         ~ColumnSet();
 
+        Selection operator ()();
+        Selection operator ()(bool inrange, int row1, int row2);
+        template <typename... args>
+        Selection operator ()(args... rowIndices) {
+            std::set<int> rows;
+            int exp[sizeof...(args)] = { (addtoset(nullptr, rows, rowIndices), 0)... };
+            return Selection(*this, rows);
+        }
+        Row operator [](int index);
         inline int size() { return dim_h; }
         inline int rows() { return dim_v; }
     private:
         int              dim_h;
         int              dim_v;
-        std::set<Column> cols;
+        std::set<Column> colset;
     };
 
-    class Row {
-        friend CSV;
+    class Selection {
     public:
-        Row(CSV csv, int index);
-        ~Row();
+        Selection(CSV &csv, std::set<int> &rows);
+        Selection(ColumnSet &cs, std::set<int> &rows);
+        ~Selection();
 
-        Cell &operator [](int index);
-        inline int size() { return dim_h; }
+        void select(int index);
+        CSV  tocsv();
+
+        Column operator [](const char *colName);
+        Column operator [](int index);
+        inline Cell **columnNames() { return headers; }
+        inline int    columns()     { return dim_h; }
+        inline int    rows()        { return dim_v; }
     private:
-        int    dim_h;
-        Cell **cells;
+        int column(const char *colName);
+    private:
+        int           dim_h;
+        int           dim_v;
+        Cell        **headers;
+        std::set<Row> rowset;
     };
 
 public:
@@ -104,15 +152,21 @@ public:
     }
 
     ColumnSet operator ()();
-    ColumnSet operator ()(const char *col1Name, const char *col2Name);
-    ColumnSet operator ()(int col1, int col2);
-    ColumnSet operator ()(std::set<const char *> &colNames);
-    ColumnSet operator ()(std::set<int> &cols);
+    ColumnSet operator ()(bool inrange, const char *col1Name, const char *col2Name);
+    ColumnSet operator ()(bool inrange, int col1, int col2);
+    template <typename... args>
+    ColumnSet operator ()(args... colNames) {
+        std::set<int> cols;
+        int exp[sizeof...(args)] = { (addtoset(this, cols, colNames), 0)... };
+        return ColumnSet(*this, cols);
+    }
     Column    operator [](const char *colName);
     Column    operator [](int index);
 
 private:
-    int column(const char *colName);
+    static void addtoset(CSV *csv, std::set<int> &set, const char *colName);
+    static void addtoset(CSV *csv, std::set<int> &set, int index);
+    int  column(const char *colName);
     void resizeh(int ncap);
     void resizev(int ncap);
 

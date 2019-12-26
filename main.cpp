@@ -15,4 +15,12 @@ int main(int argc, char *argv[])
         cout << csv[i][698];
     }
     cout << endl;
+
+    CSV::Selection &&selection = csv("PassengerId", "Survived", "Pclass")(0, 23, 32);
+
+    for (int i = 0; i < selection.columns(); i++)
+    {
+        cout << *selection.columnNames()[i];
+    }
+
 }

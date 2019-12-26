@@ -10,8 +10,7 @@ CSV::Cell::Cell() : Cell("")
 {
 }
 
-CSV::Cell::Cell(Cell const &cell)
-    : Cell(cell.content)
+CSV::Cell::Cell(Cell const &cell) : Cell(cell.content)
 {
 }
 
@@ -26,15 +25,29 @@ CSV::Cell::Cell(const char *content)
     }
 }
 
+CSV::Cell::Cell(int integer)
+    : width(20)
+{
+    content = new char[20]{0};
+    sprintf(content, "%d", integer);
+}
+
+CSV::Cell::Cell(double decimal)
+    : width(20)
+{
+    content = new char[20]{0};
+    sprintf(content, "%f", decimal);
+}
+
 CSV::Cell::~Cell()
 {
-    delete content;
+    delete[] content;
 }
 
 CSV::Cell &CSV::Cell::operator =(Cell const &cell)
 {
     width = cell.width;
-    delete content;
+    delete[] content;
     content = new char[strlen(cell.content) + 1]{0};
     sprintf(content, "%s", cell.content);
     return *this;
@@ -43,7 +56,7 @@ CSV::Cell &CSV::Cell::operator =(Cell const &cell)
 CSV::Cell &CSV::Cell::operator =(Cell &&cell)
 {
     width = cell.width;
-    delete content;
+    delete[] content;
     content = cell.content;
     cell.content = nullptr;
     return *this;
@@ -67,7 +80,17 @@ CSV::Column::Column(CSV &csv, int index)
 
 CSV::Column::~Column()
 {
-    delete cells;
+    delete[] cells;
+}
+
+bool operator <(const CSV::Column &a, const CSV::Column &b)
+{
+    return strcmp(a.header->string(), b.header->string()) < 0;
+}
+
+CSV::Cell& CSV::Column::operator [](int index) const
+{
+    return *cells[index];
 }
 
 CSV::Cell& CSV::Column::operator [](int index)
@@ -75,22 +98,11 @@ CSV::Cell& CSV::Column::operator [](int index)
     return *cells[index];
 }
 
-// Column
-//===================================================================================
-CSV::ColumnSet::ColumnSet(CSV &csv, std::set<int> &cols)
-    : dim_h(cols.size())
-    , dim_v(csv.rows())
-{
-    for (std::set<int>::iterator it = cols.begin(); it != cols.end(); it++)
-    {
-        this->cols.insert(Column(csv, *it));
-    }
-}
-
 // Row
 //===================================================================================
-CSV::Row::Row(CSV csv, int index)
+CSV::Row::Row(CSV &csv, int index)
     : dim_h(csv.dim_h)
+    , selected(0)
 {
     cells = new Cell*[dim_h];
     for (int i = 0; i < dim_h; i++) {
@@ -98,14 +110,130 @@ CSV::Row::Row(CSV csv, int index)
     }
 }
 
-CSV::Row::~Row()
+CSV::Row::Row(ColumnSet &cs, int index)
+    : dim_h(cs.size())
+    , selected(0)
 {
-    delete cells;
+    cells = new Cell*[dim_h];
+    int i = 0;
+    for (std::set<Column>::iterator it = cs.colset.begin(); it != cs.colset.end(); it++)
+    {
+        cells[i++] = &(*it)[index];
+    }
 }
 
-CSV::Cell& CSV::Row::operator [](int index)
+CSV::Row::~Row()
+{
+    delete[] cells;
+}
+
+void CSV::Row::select(int index) const
+{
+    selected = index;
+}
+
+bool operator <(const CSV::Row &a, const CSV::Row &b)
+{
+    return strcmp(a.cells[a.selected]->string(), b.cells[b.selected]->string()) < 0;
+}
+
+CSV::Cell &CSV::Row::operator [](int index) const
 {
     return *cells[index];
+}
+
+CSV::Cell &CSV::Row::operator [](int index)
+{
+    return *cells[index];
+}
+
+// Column Set
+//===================================================================================
+CSV::ColumnSet::ColumnSet(CSV &csv, std::set<int> &cols)
+    : dim_h(cols.size())
+    , dim_v(csv.rows())
+{
+    for (std::set<int>::iterator it = cols.begin(); it != cols.end(); it++)
+    {
+        colset.insert(Column(csv, *it));
+    }
+}
+
+CSV::ColumnSet::~ColumnSet()
+{
+    colset.clear();
+}
+
+CSV::Selection CSV::ColumnSet::operator ()()
+{
+    return (*this)(true, 0, -1);
+}
+
+CSV::Selection CSV::ColumnSet::operator ()(bool inrange, int row1, int row2)
+{
+    std::set<int> rows;
+    if (row1 < 0) row1 += dim_h;
+    if (row2 < 0) row2 += dim_h;
+    if (row1 > row2) std::swap(row1, row2);
+    if (inrange) {
+        for (int i = row1; i <= row2; i++) rows.insert(i);
+    } else {
+        for (int i = 0; i < row1; i++) rows.insert(i);
+        for (int i = row2 + 1; i < dim_h; i++) rows.insert(i);
+    }
+    return Selection(*this, rows);
+}
+
+CSV::Row CSV::ColumnSet::operator [](int index)
+{
+    return Row(*this, index);
+}
+
+// Row Set
+//===================================================================================
+CSV::Selection::Selection(CSV &csv, std::set<int> &rows)
+    : dim_h(csv.columns())
+    , dim_v(rows.size())
+{
+    headers = new Cell*[dim_h];
+    for (int i = 0; i < dim_h; i++)
+    {
+        headers[i] = &csv.header[i];
+    }
+    for (std::set<int>::iterator it = rows.begin(); it != rows.end(); it++)
+    {
+        rowset.insert(Row(csv, *it));
+    }
+}
+
+CSV::Selection::Selection(ColumnSet &cs, std::set<int> &rows)
+    : dim_h(cs.size())
+    , dim_v(rows.size())
+{
+    headers = new Cell*[dim_h];
+    int i = 0;
+    for (std::set<Column>::iterator it = cs.colset.begin(); it != cs.colset.end(); it++)
+    {
+        headers[i++] = (*it).header;
+    }
+    for (std::set<int>::iterator it = rows.begin(); it != rows.end(); it++)
+    {
+        rowset.insert(Row(cs, *it));
+    }
+}
+
+CSV::Selection::~Selection()
+{
+    delete[] headers;
+    rowset.clear();
+}
+
+void CSV::Selection::select(int index)
+{
+    for (std::set<Row>::iterator it = rowset.begin(); it != rowset.end(); it++)
+    {
+        (*it).select(index);
+    }
 }
 
 // CSV
@@ -359,35 +487,26 @@ bool CSV::deleteRow(int index)
 //===================================================================================
 CSV::ColumnSet CSV::operator ()()
 {
-    return (*this)(0, -1);
+    return (*this)(true, 0, -1);
 }
 
-CSV::ColumnSet CSV::operator ()(const char *col1Name, const char *col2Name)
+CSV::ColumnSet CSV::operator ()(bool inrange, const char *col1Name, const char *col2Name)
 {
-    return (*this)(column(col1Name), column(col2Name));
+    return (*this)(inrange, column(col1Name), column(col2Name));
 }
 
-CSV::ColumnSet CSV::operator ()(int col1, int col2)
+CSV::ColumnSet CSV::operator ()(bool inrange, int col1, int col2)
 {
     std::set<int> cols;
     if (col1 < 0) col1 += dim_h;
     if (col2 < 0) col2 += dim_h;
     if (col1 > col2) std::swap(col1, col2);
-    for (int i = col1; i <= col2; i++) cols.insert(i);
-    return (*this)(cols);
-}
-
-CSV::ColumnSet CSV::operator ()(std::set<const char *> &colNames)
-{
-    std::set<int> cols;
-    for (std::set<const char *>::iterator it = colNames.begin(); it != colNames.end(); it++) {
-        cols.insert(column(*it));
+    if (inrange) {
+        for (int i = col1; i <= col2; i++) cols.insert(i);
+    } else {
+        for (int i = 0; i < col1; i++) cols.insert(i);
+        for (int i = col2 + 1; i < dim_h; i++) cols.insert(i);
     }
-    return (*this)(cols);
-}
-
-CSV::ColumnSet CSV::operator ()(std::set<int> &cols)
-{
     return ColumnSet(*this, cols);
 }
 
@@ -404,6 +523,16 @@ CSV::Column CSV::operator [](int index)
 
 // Private
 //===================================================================================
+void CSV::addtoset(CSV *csv, std::set<int> &set, const char *colName)
+{
+    set.insert(csv->column(colName));
+}
+
+void CSV::addtoset(CSV *csv, std::set<int> &set, int index)
+{
+    set.insert(index);
+}
+
 int CSV::column(const char *colName) 
 {
     int index = -1;
