@@ -78,6 +78,16 @@ CSV::Column::Column(CSV &csv, int index)
     }
 }
 
+CSV::Column::Column(Column const &col)
+    : header(col.header)
+    , dim_v(col.dim_v)
+{
+    cells = new Cell*[dim_v];
+    for (int i = 0; i < dim_v; i++) {
+        cells[i] = col.cells[i];
+    }
+}
+
 CSV::Column::~Column()
 {
     delete[] cells;
@@ -107,6 +117,16 @@ CSV::Row::Row(CSV &csv, int index)
     cells = new Cell*[dim_h];
     for (int i = 0; i < dim_h; i++) {
         cells[i] = &csv.content[index][i];
+    }
+}
+
+CSV::Row::Row(Row const &row)
+    : dim_h(row.dim_h)
+    , selected(row.selected)
+{
+    cells = new Cell*[dim_h];
+    for (int i = 0; i < dim_h; i++) {
+        cells[i] = row.cells[i];
     }
 }
 

@@ -40,6 +40,7 @@ public:
         friend CSV;
     public:
         Column(CSV &csv, int index);
+        Column(Column const &col);
         ~Column();
 
         friend bool operator <(const Column &a, const Column &b);
@@ -59,6 +60,7 @@ public:
     public:
         Row(CSV &csv, int index);
         Row(ColumnSet &cs, int index);
+        Row(Row const &row);
         ~Row();
 
         void select(int index) const;
@@ -81,15 +83,15 @@ public:
         ColumnSet(CSV &csv, std::set<int> &cols);
         ~ColumnSet();
 
-        Selection operator ()();
-        Selection operator ()(bool inrange, int row1, int row2);
+        Selection  operator ()();
+        Selection  operator ()(bool inrange, int row1, int row2);
         template <typename... args>
-        Selection operator ()(args... rowIndices) {
+        Selection  operator ()(args... rowIndices) {
             std::set<int> rows;
             int exp[sizeof...(args)] = { (addtoset(nullptr, rows, rowIndices), 0)... };
             return Selection(*this, rows);
         }
-        Row operator [](int index);
+        Row        operator [](int index);
         inline int size() { return dim_h; }
         inline int rows() { return dim_v; }
     private:
