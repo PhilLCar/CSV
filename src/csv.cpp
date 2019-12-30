@@ -449,7 +449,7 @@ bool CSV::moveRow(int from, int to)
                         content[j][i] = content[j][i + 1];
                     }
                 } else {
-                    for (int i = from; i > to; i++) {
+                    for (int i = from; i > to; i--) {
                         content[j][i] = content[j][i - 1];
                     }
                 }
