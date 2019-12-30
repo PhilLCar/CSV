@@ -53,7 +53,7 @@ CSV::Cell &CSV::Cell::operator =(Cell const &cell)
     return *this;
 }
 
-CSV::Cell &CSV::Cell::operator =(Cell &&cell)
+CSV::Cell &CSV::Cell::operator =(Cell &&cell) noexcept
 {
     width = cell.width;
     delete[] content;

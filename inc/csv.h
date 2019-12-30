@@ -29,7 +29,7 @@ public:
         }
 
         Cell &operator =(Cell const &cell);
-        Cell &operator =(Cell &&cell);
+        Cell &operator =(Cell &&cell) noexcept;
         friend std::ostream& operator <<(std::ostream &stream, Cell &cell);
     private:
         int   width;
