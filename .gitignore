@@ -1,0 +1,8 @@
+Debug
+main
+*.opendb
+*.aps
+*.ncb
+*.opensdf
+*.sdf
+*.cachefile

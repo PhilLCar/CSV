@@ -64,6 +64,7 @@ CSV::Cell &CSV::Cell::operator =(Cell &&cell)
 
 std::ostream& operator << (std::ostream &stream, CSV::Cell &cell) {
     stream << std::setw(cell.width) << cell.string();
+    return stream;
 }
 
 // Column
@@ -287,8 +288,8 @@ CSV::CSV(const char *filename, bool firstRowIsHeader)
                 (*this)[col][row] = string;
             }
         }
+        fclose(file);
     }
-    fclose(file);
 }
 
 CSV::~CSV()
@@ -413,7 +414,7 @@ bool CSV::deleteColumn(int index)
 
 bool CSV::deleteColumn(const char *colName)
 {
-    deleteColumn(column(colName));
+    return deleteColumn(column(colName));
 }
 
 // Rows
