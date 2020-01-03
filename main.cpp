@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
     cout << endl;
     for (int i = 0; i < selection.rows(); i++)
     {
-        for (int j = 0; j < selection.columns(); i++)
+        for (int j = 0; j < selection.columns(); j++)
         {
             cout << selection[j][i];
         }

@@ -9,6 +9,12 @@
 
 class CSV {
 public:
+    class Cell;
+    class Column;
+    class Row;
+    class ColumnSet;
+    class Selection;
+
     class Cell {
     public:
         Cell();
@@ -40,6 +46,7 @@ public:
         friend CSV;
     public:
         Column(CSV &csv, int index);
+        Column(Selection &selection, int index);
         Column(Column const &col);
         ~Column();
 
@@ -54,7 +61,6 @@ public:
         Cell **cells;
     };
 
-    class ColumnSet;
     class Row {
         friend CSV;
     public:
@@ -75,7 +81,6 @@ public:
         Cell      **cells;
     };
 
-    class Selection;
     class ColumnSet {
         friend Selection;
         friend Row;
@@ -101,6 +106,7 @@ public:
     };
 
     class Selection {
+      friend Column;
     public:
         Selection(CSV &csv, std::set<int> &rows);
         Selection(ColumnSet &cs, std::set<int> &rows);

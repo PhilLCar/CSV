@@ -1,7 +1,6 @@
 #include <csv.h>
 
 #include <string.h>
-#include <stdio.h>
 #include <iomanip>
 
 // Cell
@@ -62,7 +61,8 @@ CSV::Cell &CSV::Cell::operator =(Cell &&cell) noexcept
     return *this;
 }
 
-std::ostream& operator << (std::ostream &stream, CSV::Cell &cell) {
+std::ostream& operator << (std::ostream &stream, CSV::Cell &cell) 
+{
     stream << std::setw(cell.width) << cell.string();
     return stream;
 }
@@ -77,6 +77,18 @@ CSV::Column::Column(CSV &csv, int index)
     for (int i = 0; i < dim_v; i++) {
         cells[i] = &csv.content[index][i];
     }
+}
+
+CSV::Column::Column(Selection &selection, int index)
+  : header(selection.headers[index])
+  , dim_v(selection.dim_v)
+{
+  cells = new Cell*[dim_v];
+  int i = 0;
+  for (std::set<Row>::iterator it = selection.rowset.begin(); it != selection.rowset.end(); it++)
+  {
+    cells[i++] = &(*it)[index];
+  }
 }
 
 CSV::Column::Column(Column const &col)
@@ -210,7 +222,7 @@ CSV::Row CSV::ColumnSet::operator [](int index)
     return Row(*this, index);
 }
 
-// Row Set
+// Selection
 //===================================================================================
 CSV::Selection::Selection(CSV &csv, std::set<int> &rows)
     : dim_h(csv.columns())
@@ -255,6 +267,34 @@ void CSV::Selection::select(int index)
     {
         (*it).select(index);
     }
+}
+
+CSV::Column CSV::Selection::operator [](const char *colName)
+{
+  return Column(*this, column(colName));
+}
+
+CSV::Column CSV::Selection::operator [](int index)
+{
+  if (index < 0) index += dim_h;
+  return Column(*this, index);
+}
+
+int CSV::Selection::column(const char *colName)
+{
+  int index = -1;
+  for (int i = 0; i < dim_h; i++) {
+    if (!strcmp(colName, headers[i]->string())) {
+      index = i;
+      break;
+    }
+  }
+  if (index == -1) {
+    char error[64] = { 0 };
+    sprintf(error, "Column '%s' doesn't exist", colName);
+    throw std::out_of_range(error);
+  }
+  return index;
 }
 
 // CSV
