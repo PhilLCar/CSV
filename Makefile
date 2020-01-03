@@ -1,5 +1,5 @@
 
-main:
+build:
 	@g++ -Iinc src/* main.cpp -o main
 
 clean:
