@@ -1,5 +1,6 @@
-Debug
-main
+bin/*
+lib/*
+obj/*
 *.opendb
 *.aps
 *.ncb
