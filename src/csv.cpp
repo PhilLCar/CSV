@@ -183,7 +183,7 @@ CSV::Cell &CSV::Row::operator [](int index)
 // Column Set
 //===================================================================================
 CSV::ColumnSet::ColumnSet(CSV &csv, std::set<int> &cols)
-    : dim_h(cols.size())
+    : dim_h((int)cols.size())
     , dim_v(csv.rows())
 {
     for (std::set<int>::iterator it = cols.begin(); it != cols.end(); it++)
@@ -226,7 +226,7 @@ CSV::Row CSV::ColumnSet::operator [](int index)
 //===================================================================================
 CSV::Selection::Selection(CSV &csv, std::set<int> &rows)
     : dim_h(csv.columns())
-    , dim_v(rows.size())
+    , dim_v((int)rows.size())
 {
     headers = new Cell*[dim_h];
     for (int i = 0; i < dim_h; i++)
@@ -240,8 +240,8 @@ CSV::Selection::Selection(CSV &csv, std::set<int> &rows)
 }
 
 CSV::Selection::Selection(ColumnSet &cs, std::set<int> &rows)
-    : dim_h(cs.size())
-    , dim_v(rows.size())
+    : dim_h((int)cs.size())
+    , dim_v((int)rows.size())
 {
     headers = new Cell*[dim_h];
     int i = 0;

@@ -130,7 +130,7 @@ public:
     };
 
 public:
-    CSV(const char *filename, bool firstRowIsHeader= true);
+    CSV(const char *filename, bool firstRowIsHeader = true);
     ~CSV();
 
     bool addColumn();

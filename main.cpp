@@ -3,6 +3,7 @@
 
 using namespace std;
 
+// This is a test main, do not compile for library
 int main(int argc, char *argv[])
 {
     CSV csv = CSV("csv/train.csv");
