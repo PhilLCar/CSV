@@ -1,194 +1,90 @@
-#ifndef INC_CSV_H
-#define INC_CSV_H
+#ifndef CSV_CSV_HEADER
+#define CSV_CSV_HEADER
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <ostream>
-#include <set>
 #include <cstdarg>
+#include <cstdio>
+#include <cstdlib>
 
-class CSV {
-public:
+#include <osal.h>
+#include <pointerarray.h>
+
+namespace csv {
+  CSV_LINK class CSV_API CSV {
+  public:
     class Cell;
     class Column;
-    class Row;
     class ColumnSet;
+    class Row;
     class Selection;
 
-    class Cell {
-    public:
-        Cell();
-        Cell(Cell const &cell);
-        Cell(const char *content);
-        Cell(int integer);
-        Cell(double decimal);
-        ~Cell();
+#include <cell.h>
+#include <column.h>
+#include <columnset.h>
+#include <row.h>
+#include <selection.h>
 
-        const inline char *string() {
-            return content;
-        }
-        const inline int integer() {
-            return atoi(content);
-        }
-        const inline double decimal() {
-            return atof(content);
-        }
-
-        Cell &operator =(Cell const &cell);
-        Cell &operator =(Cell &&cell) noexcept;
-        friend std::ostream& operator <<(std::ostream &stream, Cell &cell);
-    private:
-        int   width;
-        char *content;
-    };
-
-    class Column {
-        friend CSV;
-    public:
-        Column(CSV &csv, int index);
-        Column(Selection &selection, int index);
-        Column(Column const &col);
-        ~Column();
-
-        friend bool operator <(const Column &a, const Column &b);
-        Cell       &operator [](int index) const;
-        Cell       &operator [](int index);
-        inline int   size() { return dim_v; }
-        inline Cell &name() { return *header; }
-    private:
-        int    dim_v;
-        Cell  *header;
-        Cell **cells;
-    };
-
-    class Row {
-        friend CSV;
-    public:
-        Row(CSV &csv, int index);
-        Row(ColumnSet &cs, int index);
-        Row(Row const &row);
-        ~Row();
-
-        void select(int index) const;
-
-        friend bool operator <(const Row &a, const Row &b);
-        Cell &operator [](int index) const;
-        Cell &operator [](int index);
-        inline int size() { return dim_h; }
-    private:
-        mutable int selected;
-        int         dim_h;
-        Cell      **cells;
-    };
-
-    class ColumnSet {
-        friend Selection;
-        friend Row;
-    public:
-        ColumnSet(CSV &csv, std::set<int> &cols);
-        ~ColumnSet();
-
-        Selection  operator ()();
-        Selection  operator ()(bool inrange, int row1, int row2);
-        template <typename... args>
-        Selection  operator ()(args... rowIndices) {
-            std::set<int> rows;
-            int exp[sizeof...(args)] = { (addtoset(nullptr, rows, rowIndices), 0)... };
-            return Selection(*this, rows);
-        }
-        Row        operator [](int index);
-        inline int size() { return dim_h; }
-        inline int rows() { return dim_v; }
-    private:
-        int              dim_h;
-        int              dim_v;
-        std::set<Column> colset;
-    };
-
-    class Selection {
-      friend Column;
-    public:
-        Selection(CSV &csv, std::set<int> &rows);
-        Selection(ColumnSet &cs, std::set<int> &rows);
-        ~Selection();
-
-        void select(int index);
-        CSV  tocsv();
-
-        Column operator [](const char *colName);
-        Column operator [](int index);
-        inline Cell **columnNames() { return headers; }
-        inline int    columns()     { return dim_h; }
-        inline int    rows()        { return dim_v; }
-    private:
-        int column(const char *colName);
-    private:
-        int           dim_h;
-        int           dim_v;
-        Cell        **headers;
-        std::set<Row> rowset;
-    };
-
-public:
-    CSV(const char *filename, bool firstRowIsHeader = true);
+  public:
+    CSV(const char* filename, bool firstRowIsHeader = true, char separator = ',');
     ~CSV();
 
-    bool addColumn();
-    bool addColumn(const char *colName);
-    bool moveColumn(int from, int to);
-    bool moveColumn(const char *fromName, int rel);
-    bool swapColumn(int col1, int col2);
-    bool swapColumn(const char *col1Name, const char *col2Name);
-    bool insertColumn(int index);
-    bool insertColumn(int index, const char *colName);
-    bool deleteColumn(int index);
-    bool deleteColumn(const char *colName);
-    inline Cell *columnNames() {
-        return header;
-    }
-    inline int columns() {
-        return dim_h;
-    }
+    void flush();
 
-    bool addRow();
-    bool moveRow(int from, int to);
-    bool swapRow(int row1, int row2);
-    bool insertRow(int index);
-    bool deleteRow(int index);
-    inline int rows() {
-        return dim_v;
-    }
+    bool         addColumn();
+    bool         addColumn(const char* colName);
+    bool         moveColumn(int from, int to);
+    bool         moveColumn(const char* fromName, int rel);
+    bool         swapColumn(int col1, int col2);
+    bool         swapColumn(const char* col1Name, const char* col2Name);
+    bool         insertColumn(int index);
+    bool         insertColumn(int index, const char* colName);
+    bool         deleteColumn(int index);
+    bool         deleteColumn(const char* colName);
+    inline Cell* columnNames() { return header; }
+    inline int   columns()     { return dim_h;  }
+
+    bool        addRow();
+    bool        moveRow(int from, int to);
+    bool        swapRow(int row1, int row2);
+    bool        insertRow(int index);
+    bool        deleteRow(int index);
+    inline int  rows() { return dim_v; }
 
     ColumnSet operator ()();
-    ColumnSet operator ()(bool inrange, const char *col1Name, const char *col2Name);
+    ColumnSet operator ()(bool inrange, const char* col1Name, const char* col2Name);
     ColumnSet operator ()(bool inrange, int col1, int col2);
+#ifndef CSV_EXPORT
     template <typename... args>
-    ColumnSet operator ()(args... colNames) {
-        std::set<int> cols;
-        int exp[sizeof...(args)] = { (addtoset(this, cols, colNames), 0)... };
-        return ColumnSet(*this, cols);
+    ColumnSet&& operator ()(args... colNames) {
+      std::set<int> cols;
+      int exp[sizeof...(args)] = { (addtoset(this, cols, colNames), 0)... };
+      return ColumnSet(*this, cols);
     }
-    Column    operator [](const char *colName);
-    Column    operator [](int index);
+#endif
 
-private:
-    static void addtoset(CSV *csv, std::set<int> &set, const char *colName);
-    static void addtoset(CSV *csv, std::set<int> &set, int index);
-    int  column(const char *colName);
-    void resizeh(int ncap);
-    void resizev(int ncap);
+    Column operator [](const char* colName);
+    Column operator [](int index);
 
-    char next(FILE *file, char *string);
+  private:
+    static void addToSet(CSV* csv, int* set, const char* colName);
+    static void addToSet(CSV* csv, int* set, int index);
+    int         column(const char* colName);
+    void        resizeh(int ncap);
+    void        resizev(int ncap);
 
-    bool         hasHeader;
-    Cell        *header;
-    Cell       **content;
-    const char  *filename;
+    char next(FILE* file, char* string);
+
+  private:
+    bool        hasHeader;
+    Cell*       header;
+    Cell**      content;
+    const char* filename;
+    const char  separator;
 
     int dim_h;
     int dim_v;
     int cap_h;
     int cap_v;
-};
+  };
+}
 
 #endif
