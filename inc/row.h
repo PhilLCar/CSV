@@ -9,26 +9,13 @@ public:
   Row(Row const& row);
   ~Row();
 
-#ifdef CSV_EXTERN
-  void M(Column, dispose)();
-#endif
-
 public:
-#ifndef CSV_EXTERN
-  // Hide unsafe methods in C++ context
-private:
-#endif
-  bool  M(Row, lt)(const Row *other);
-  Cell* M(Row, at)(int index);
+  bool  operator <(const Row& other);
+  Cell& operator [](int index) const;
+  Cell& operator [](int index);
 
-#ifndef CSV_EXTERN
-  bool  operator <(const Row& other) { return lt(&other);    }
-  Cell& operator [](int index) const { return *cells[index]; }
-  Cell& operator [](int index)       { return *at(index);    }
-#endif
-
-  void M(Row, select)(int index) const;
-  int  M(Row, size)() const;
+  inline void select(int index) const { selected = index; }
+  inline int  size()            const { return dim_h; }
 
 private:
   mutable int  selected;

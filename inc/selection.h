@@ -10,78 +10,32 @@ private:
 public:
   ~Selection();
 
-#ifdef CSV_EXTERN
-  void M(Selection, dispose)();
-#endif
+public:
+  void sortBy(int index);
+  void sortBy(const char* name);
+  void sort(bool increasing = true);
 
-public:
-  void M(Selection, sortBy)(int index);
-  void M(Selection, sort)(bool increasing = true);
-
-public:
-#ifndef CSV_EXTERN
-  // Hide named method in C++ context
-private:
-#endif
-  void M(Selection, sortByN)(const char* colName);
-
-#ifndef CSV_EXTERN
-public:
-  inline void sortBy(const char* colName) { return sortByN(colName); }
-#endif
-
-public:
-#ifndef CSV_EXTERN
-  // Hide unsafe methods in C++ context
-private:
-#endif
-  CSV* M(Selection, toCSV)(const char *filename, char separator = ',');
- 
-#ifndef CSV_EXTERN
-public:
-  const inline CSV csv(const char *filename, char separator = ',') { MOVE(CSV, toCSV(filename, separator)); }
-#endif
+  CSV csv(const char *filename, char separator = ',') const;
 
   // Modification related methods:
   // =============================
 public:
-#ifndef CSV_EXTERN
-  // Hide unsafe methods in C++ context
-private:
-#endif
-  Selection* M(Selection, add)(int index);
-  Selection* M(Selection, sub)(int index);
-  Selection* M(Selection, xor)(int index);
-
-#ifndef CSV_EXTERN
-public:
-  inline Selection& operator +=(int index) { return *add(index); }
-  inline Selection& operator -=(int index) { return *sub(index); }
-  inline Selection& operator ^=(int index) { return *xor(index); }
-#endif
+  Selection& operator +=(int index);
+  Selection& operator -=(int index);
+  Selection& operator ^=(int index);
 
   // Indexation related methods:
   // ===========================
 public:
-#ifndef CSV_EXTERN
-  // Hide unsafe methods in C++ context
-private:
-#endif
-  Column* M(Selection, column)(const char* colName);
-  Column* M(Selection, at)(int index);
-
-#ifndef CSV_EXTERN
-public:
-  inline Column operator [](const char *colName) { MOVE(Column, column(colName)); }
-  inline Column operator [](int index)           { MOVE(Column, at(index)); }
-#endif
+  Column operator [](const char *colName);
+  Column operator [](int index);
 
 public:
-  int M(Selection, rows)() const;
-  int M(Selection, cols)() const;
+  inline int rows() const { return dim_v; }
+  inline int cols() const { return dim_h; }
 
 private:
-  void _make_matrix();
+  void make_matrix();
 
 private:
   const ColumnSet& cs;
