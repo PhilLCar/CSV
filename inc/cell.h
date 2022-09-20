@@ -10,6 +10,11 @@ private:
     DECIMAL
   };
 
+#ifdef CSV_EXTERN
+  static Cell* M(Cell, build)(Type = LITTERAL);
+  void M(Cell, dispose)();
+#endif
+
 public:
   Cell(Type = LITTERAL);
   Cell(Cell const& cell);
@@ -18,13 +23,19 @@ public:
   Cell(double decimal);
   ~Cell();
 
-  const inline char*  string()  { return content;       }
-  const inline int    integer() { return atoi(content); }
-  const inline double decimal() { return atof(content); }
+  const char*  M(Cell, string)();
+  const long   M(Cell, integer)();
+  const double M(Cell, decimal)();
 
+  void M(Cell, setContent)(const char *content);
+  void M(Cell, setInteger)(long integer);
+  void M(Cell, setDecimal)(double decimal);
+
+  void M(Cell, setType)(Type type);
+
+#ifndef CSV_EXTERN
   Cell& operator =(Cell const& cell);
   Cell& operator =(Cell&& cell) noexcept;
-#ifndef CSV_EXPORT
   friend inline std::ostream& operator <<(std::ostream& stream, CSV::Cell& cell)
   {
     stream << std::setw(cell.width) << cell.string();

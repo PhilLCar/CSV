@@ -36,9 +36,6 @@
     <ClCompile Include="src\selection.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\pointerarray.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="inc\csv.h">
@@ -59,10 +56,7 @@
     <ClInclude Include="inc\selection.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\pointerarray.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="inc\osal.h">
+    <ClInclude Include="inc\macro.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
